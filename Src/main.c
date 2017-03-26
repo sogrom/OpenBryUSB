@@ -55,9 +55,9 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-uint8_t DataToSend[40]; // Tablica zawierajaca dane do wyslania
-uint8_t MessageCounter = 0; // Licznik wyslanych wiadomosci
-uint8_t MessageLength = 0; // Zawiera dlugosc wysylanej wiadomosci
+uint8_t DataToSend[512]; // Tablica zawierajaca dane do wyslania
+uint32_t MessageCounter = 0; // Licznik wyslanych wiadomosci
+uint32_t MessageLength = 0; // Zawiera dlugosc wysylanej wiadomosci
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,7 +77,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	char *buf;
   /* USER CODE END 1 */
 
   /* MCU Configuration----------------------------------------------------------*/
@@ -102,13 +102,20 @@ int main(void)
   {
   /* USER CODE END WHILE */
 
-	  HAL_Delay(100);
+
+
+	  buf = cdc_get_line();
+
+
+	  if(buf != NULL){
+		  cdc_chomp_line();
+		  MessageLength = sprintf(DataToSend, "%s\n",  buf);
+		  CDC_Transmit_FS(DataToSend, MessageLength);
+
+	  }
 
 
 
-
-	  MessageLength = sprintf(DataToSend, "Wiadomosc %s \n",  cdc_get_line() );
-	  CDC_Transmit_FS(DataToSend, MessageLength);
 
 
   /* USER CODE BEGIN 3 */
