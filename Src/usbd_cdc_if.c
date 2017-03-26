@@ -243,6 +243,20 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /* USER CODE END 5 */
 }
 
+struct cdc_out_buf {
+    int buf_pos;
+    char buf[512];
+};
+
+struct cdc_line_buf {
+    struct cdc_out_buf *buf;
+    int last_pos;
+};
+
+
+static struct cdc_out_buf cdc_buf = { .buf_pos = 0 };
+static struct cdc_line_buf line_buf = { .buf = &cdc_buf, .last_pos = 0 };
+
 /**
   * @brief  CDC_Receive_FS
   *         Data received over USB OUT endpoint are sent over CDC interface 
@@ -258,13 +272,73 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
   * @param  Len: Number of data received (in bytes)
   * @retval Result of the operation: USBD_OK if all operations are OK else USBD_FAIL
   */
+
+
 static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
+  int i;
+
+  for(i=0; i<*Len; i++)
+    cdc_buf.buf[cdc_buf.buf_pos+i] = Buf[i];
+
+  cdc_buf.buf_pos += *Len;
+
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
-  USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
+
+//  if((sizeof(cdc_buf.buf) - cdc_buf.buf_pos) >= CDC_DATA_FS_OUT_PACKET_SIZE)
+    USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
   return (USBD_OK);
   /* USER CODE END 6 */ 
+}
+
+
+char *cdc_get_line(void) {
+    int buf_pos;
+    int i;
+    uint32_t irq_flags;
+
+
+//    disable_irq(&irq_flags);
+    buf_pos = line_buf.buf->buf_pos;
+//    enable_irq(&irq_flags);
+
+
+    for(i=line_buf.last_pos; i<buf_pos; i++) {
+        if(line_buf.buf->buf[i]=='\r' || line_buf.buf->buf[i]=='\n') {
+            line_buf.buf->buf[i] = 0;
+            if(i<buf_pos && line_buf.buf->buf[i+1]=='\n')
+                i++;
+            line_buf.buf->buf[i] = 0;
+            line_buf.last_pos = i+1;
+            return line_buf.buf->buf;
+        }
+    }
+
+    return NULL;
+}
+
+void cdc_chomp_line(void) {
+    int buf_pos;
+    int i;
+    uint32_t irq_flags;
+    char *buf;
+
+    buf = line_buf.buf->buf;
+
+
+//    disable_irq(&irq_flags);
+    buf_pos = line_buf.buf->buf_pos;
+
+    for(i=0; (line_buf.last_pos+i)<buf_pos; i++)
+        buf[i] = buf[line_buf.last_pos + i];
+
+    line_buf.buf->buf_pos -= line_buf.last_pos;
+//    enable_irq(&irq_flags);
+
+    line_buf.last_pos = 0;
 }
 
 /**

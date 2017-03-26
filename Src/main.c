@@ -48,6 +48,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "inttypes.h"
+#include "usbd_cdc_if.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -105,9 +106,10 @@ int main(void)
 
 
 
-	  ++MessageCounter;
-	  MessageLength = sprintf(DataToSend, "Wiadomosc nr %d\n", (uint16_t ) HAL_GetTick() );
+
+	  MessageLength = sprintf(DataToSend, "Wiadomosc %s \n",  cdc_get_line() );
 	  CDC_Transmit_FS(DataToSend, MessageLength);
+
 
   /* USER CODE BEGIN 3 */
 
